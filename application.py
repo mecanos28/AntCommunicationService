@@ -4,13 +4,13 @@ from flask import Flask, request, app
 # import json
 # import time
 
-app = Flask(__name__)
+application = Flask(__name__)
 # dynamodb = boto3.resource('dynamodb')
 # table = dynamodb.Table('your-table-name')
 # queue = boto3.client('sqs').get_queue_url(QueueName='your-queue-name')['QueueUrl']
 
 
-@app.route('/recibir-mensaje', methods=['POST'])
+@application.route('/recibir-mensaje', methods=['POST'])
 def handle_request():
     data = request.get_json()
     print('Mensaje recibido: ', data)
@@ -40,4 +40,4 @@ def handle_request():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    application.run(debug=True)

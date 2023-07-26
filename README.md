@@ -3,15 +3,23 @@
 Run the following command to start the service:
 
 ```
-python3 app.py
+python3 application.py
 ```
 
 Test in postman with the following request:
 
 ```
 http://127.0.0.1:5000/recibir-mensaje (POST)
+````
+
+If uploaded to Beanstalk: 
+
+```
+http://antcommunicationservicev2.us-east-1.elasticbeanstalk.com/recibir-mensaje (POST)
+```
 
 Body:
+```
 {
     "test": "test"
 }
@@ -27,11 +35,13 @@ The response should be:
 }
 ```
 
+![](https://i.imgur.com/zRQe9bA.png)
+
 ## Deploy to Elastic BeanStalk (AWS)
 
 To deploy your application to AWS Elastic Beanstalk, you need to provide your application code as a .zip file. Here's how you can create it:
 
-1. **Gather your application files**: Make sure all the necessary files for your application are in a single directory. This usually includes your main application file (like `app.py` for a Flask app), any additional modules, and other necessary files such as a requirements.txt file which lists all the Python packages your application depends on.
+1. **Gather your application files**: Make sure all the necessary files for your application are in a single directory. This usually includes your main application file (like `application.py` for a Flask app), any additional modules, and other necessary files such as a requirements.txt file which lists all the Python packages your application depends on.
 
 2. **Create a requirements.txt file (if necessary)**: If your application depends on other Python packages, you should create a requirements.txt file that lists these packages. You can generate a requirements.txt file using pip:
 
@@ -58,14 +68,16 @@ To deploy your application to AWS Elastic Beanstalk, you need to provide your ap
 
 4. **Upload the .zip file to Elastic Beanstalk**: When you're creating a new Elastic Beanstalk environment (or a new application version for an existing environment), you can choose to "Upload your code", and then you can upload the .zip file you've just created.
 
-Keep in mind that the application file (the file that contains your Flask application, usually named `application.py` or `app.py`) and the `requirements.txt` file (if you have one) should be in the root of the .zip file, not in a subdirectory.
+Keep in mind that the application file (the file that contains your Flask application, usually named `application.py` or `application.py`) and the `requirements.txt` file (if you have one) should be in the root of the .zip file, not in a subdirectory.
 
 You might also need to add a file named `.ebextensions/python.config` to your .zip file with the following content, to ensure Elastic Beanstalk uses the correct file and function to start your Flask application:
 
 ```yaml
 option_settings:
   aws:elasticbeanstalk:container:python:
-    WSGIPath: app.py
+    WSGIPath: application.py
 ```
 
-Replace `app.py` with the path to your application file if it's different. This file should be in the same directory as your main Flask file.
+
+
+Replace `application.py` with the path to your application file if it's different. This file should be in the same directory as your main Flask file.
