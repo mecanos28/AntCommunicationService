@@ -18,8 +18,6 @@ def handle_request():
     # Store data in DynamoDB
     ## Console log it would save here. Implement later.
 
-
-
     # item_id = data.get('id')
     # response = table.put_item(
     #     Item={
@@ -36,7 +34,7 @@ def handle_request():
     #     DelaySeconds=60
     # )
 
-    return {'status': 'success'}, 200
+    return {'status': 'success in Beanstalk'}, 200
 
 
 if __name__ == '__main__':
