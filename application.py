@@ -6,6 +6,10 @@ import requests
 import uuid
 from datetime import datetime
 
+### Constantes ###
+POLL_TO_ENTORNO_SECONDS = 10  # Actualmente configurado a 10 segundos para pruebas. Debe ser 60 segundos en producción.
+ENTORNO_NEXT_ELEMENT_URL = "http://placeholder.url/api/environment/next"  # Reemplazar con la URL real cuando esté disponible
+
 ### Configuración de Registro (Logging) ###
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
@@ -17,15 +21,12 @@ def tarea_programada():
     print(f"Respuesta de la tarea programada: {respuesta.status_code}")
 
 sched = BackgroundScheduler(daemon=True)
-sched.add_job(tarea_programada, 'interval', seconds=5)
+sched.add_job(tarea_programada, 'interval', seconds=POLL_TO_ENTORNO_SECONDS)
 sched.start()
 
 ### Configuración de Flask ###
 application = Flask(__name__)
 
-### Constantes ###
-POLL_TO_ENTORNO_SECONDS = 10  # Actualmente configurado a 10 segundos para pruebas
-ENTORNO_NEXT_ELEMENT_URL = "http://placeholder.url/api/environment/next"  # Reemplazar con la URL real cuando esté disponible
 
 MOCK_ENTORNO_RESPUESTA = {
     "_id": "mock_id",
