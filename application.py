@@ -22,12 +22,19 @@ sched.start()
 
 ### Configuración de Flask ###
 application = Flask(__name__)
-application.logger.addHandler(logger.handlers[0])
-application.logger.setLevel(logging.INFO)
 
 ### Constantes ###
 POLL_TO_ENTORNO_SECONDS = 10  # Actualmente configurado a 10 segundos para pruebas
 ENTORNO_NEXT_ELEMENT_URL = "http://placeholder.url/api/environment/next"  # Reemplazar con la URL real cuando esté disponible
+
+MOCK_ENTORNO_RESPUESTA = {
+    "_id": "mock_id",
+    "type": "mock_type",
+    "name": "mock_name",
+    "antsRequired": 5,
+    "timeRequired": 10,
+    "foodValue": 7
+}
 
 ### Configuración de AWS DynamoDB ###
 dynamodb = boto3.resource('dynamodb')
@@ -45,6 +52,12 @@ def endpoint_poll_entorno():
 def _consultar_entorno():
     """Función para obtener datos del servicio externo entorno."""
     application.logger.info(f"Consultando {ENTORNO_NEXT_ELEMENT_URL}")
+    # Verificar si el URL es un placeholder, y en tal caso, usar datos mock
+    if ENTORNO_NEXT_ELEMENT_URL == "http://placeholder.url/api/environment/next":
+        application.logger.info(f"Usando datos simulados para {ENTORNO_NEXT_ELEMENT_URL}")
+        application.logger.info(f"Esto escribiría en DynamoDB: {MOCK_ENTORNO_RESPUESTA}")
+        return
+
     respuesta = requests.get(ENTORNO_NEXT_ELEMENT_URL)
     if respuesta.status_code == 200:
         data = respuesta.json()
