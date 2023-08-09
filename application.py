@@ -1,50 +1,61 @@
 import logging
-from flask import Flask, request, jsonify
+from apscheduler.schedulers.background import BackgroundScheduler
+from flask import Flask, request
 import boto3
 import requests
-import json
 import uuid
 from datetime import datetime
-from flask_apscheduler import APScheduler
 
-# Configure root logging
+### Configuración de Registro (Logging) ###
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 
-application = Flask(__name__)
-scheduler = APScheduler()
+### Configuración del Programador (Scheduler) ###
+def tarea_programada():
+    """Función para acceder al endpoint poll_entorno periódicamente."""
+    respuesta = requests.get('http://127.0.0.1:5000/poll-entorno')  # Asumiendo que Flask corre en el puerto 5000 por defecto
+    print(f"Respuesta de la tarea programada: {respuesta.status_code}")
 
-# Use the root logger for Flask as well
+sched = BackgroundScheduler(daemon=True)
+sched.add_job(tarea_programada, 'interval', seconds=5)
+sched.start()
+
+### Configuración de Flask ###
+application = Flask(__name__)
 application.logger.addHandler(logger.handlers[0])
 application.logger.setLevel(logging.INFO)
 
+### Constantes ###
+POLL_TO_ENTORNO_SECONDS = 10  # Actualmente configurado a 10 segundos para pruebas
+ENTORNO_NEXT_ELEMENT_URL = "http://placeholder.url/api/environment/next"  # Reemplazar con la URL real cuando esté disponible
+
+### Configuración de AWS DynamoDB ###
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('your-table-name')
 
-#################################### Constantes ####################################
-POLL_TO_ENTORNO_SECONDS = 10  # 10 minutes
-
-# Reemplzar cuando tengamos el URL disponible
-ENTORNO_NEXT_ELEMENT_URL = "http://placeholder.url/api/environment/next"
-
+### Endpoints de API ###
+# Este endpoint lo llama el programador (scheduler)
+# para activar el poll hacia el servicio externo "entorno".
 @application.route('/poll-entorno', methods=['GET'])
-def poll_entorno_endpoint():
-    poll_entorno()
-    return {'status': 'polled successfully'}, 200
+def endpoint_poll_entorno():
+    """Endpoint para activar manualmente la encuesta."""
+    _consultar_entorno()
+    return {'status': 'consulta exitosa'}, 200
 
-def poll_entorno():
-    application.logger.info(f"Polling {ENTORNO_NEXT_ELEMENT_URL}")
-    response = requests.get(ENTORNO_NEXT_ELEMENT_URL)
-    if response.status_code == 200:
-        data = response.json()
+def _consultar_entorno():
+    """Función para obtener datos del servicio externo entorno."""
+    application.logger.info(f"Consultando {ENTORNO_NEXT_ELEMENT_URL}")
+    respuesta = requests.get(ENTORNO_NEXT_ELEMENT_URL)
+    if respuesta.status_code == 200:
+        data = respuesta.json()
         application.logger.info(f"Dato obtenido de {ENTORNO_NEXT_ELEMENT_URL}: {data}")
-        handle_received_data(data)
+        procesar_datos_recibidos_de_entorno(data)
     else:
-        application.logger.warning(f"No se pudo obtener datos de {ENTORNO_NEXT_ELEMENT_URL}. Status: {response.status_code}")
+        application.logger.warning(f"No se pudo obtener datos de {ENTORNO_NEXT_ELEMENT_URL}. Estado: {respuesta.status_code}")
 
-def handle_received_data(data):
-    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
+def procesar_datos_recibidos_de_entorno(data):
+    """Función para procesar los datos recibidos y guardar en DynamoDB."""
+    tiempo_actual = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     item = {
         'id': str(uuid.uuid4()),
         'externalId': data.get('_id'),
@@ -53,26 +64,24 @@ def handle_received_data(data):
         'antsRequired': data.get('antsRequired'),
         'timeRequired': data.get('timeRequired'),
         'foodValue': data.get('foodValue', None),
-        'datetime': current_time
+        'datetime': tiempo_actual
     }
+    respuesta = table.put_item(Item=item)
+    application.logger.info(f"Dato guardado en DynamoDB: {item}")
 
-    response = table.put_item(Item=item)
-    application.logger.info(f"Mensaje guardado en DynamoDB: {item}")
 
+# No se usa, pero se deja como ejemplo de cómo recibir mensajes entrantes.
 @application.route('/recibir-mensaje', methods=['POST'])
-def handle_request():
+def manejar_solicitud():
+    """Endpoint para recibir y procesar mensajes entrantes."""
     data = request.get_json()
-    application.logger.info(f"Mensaje recibido a través de API: {data}")
-    handle_received_data(data)
-    return {'status': 'success receiving message'}, 200
+    application.logger.info(f"Mensaje recibido a través de la API: {data}")
+    procesar_datos_recibidos_de_entorno(data)
+    return {'status': 'mensaje recibido con éxito'}, 200
 
-def scheduler_task():
-    # This function will hit the poll_entorno endpoint
-    response = requests.get('http://localhost:5000/poll-entorno')  # Assuming Flask runs on default 5000 port
-    print(f"Scheduled task response: {response.status_code}")
-
+### Ejecución Principal ###
 if __name__ == '__main__':
-    scheduler.init_app(application)
-    scheduler.add_job(id='polling_task', func=scheduler_task, trigger='interval', seconds=POLL_TO_ENTORNO_SECONDS)
-    scheduler.start()
+    # Debido a que el programador (scheduler) se ejecuta en un hilo separado,
+    # tenemos que desactivar el recargado automático de Flask para evitar que se ejecuten
+    # múltiples instancias del programador.
     application.run(debug=False, use_reloader=False)
