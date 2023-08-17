@@ -9,6 +9,8 @@ from datetime import datetime
 ### Constantes ###
 POLL_TO_ENTORNO_SECONDS = 10  # Actualmente configurado a 10 segundos para pruebas. Debe ser 60 segundos en producción.
 ENTORNO_NEXT_ELEMENT_URL = "http://ec2-52-200-81-149.compute-1.amazonaws.com/api/environment/next-task"
+
+# Pendientes de onbordear
 HORMIGA_REQUEST_URL = "http://ec2-3-19-106-46.us-east-2.compute.amazonaws.com:38000/getHormiga" # Cambiar a la URL correcta cuando sepamos
 HORMIGA_RETURN_URL = "http://ec2-3-19-106-46.us-east-2.compute.amazonaws.com:38000/returnHormiga" # Cambiar a la URL correcta cuando sepamos
 INFORMAR_ATAQUE_URL = "http://colony-defense-service-env.eba-pmxaehhm.us-east-1.elasticbeanstalk.com:8080/swagger-ui/index.html" # Cambiar a la URL correcta cuando sepamos
@@ -79,7 +81,9 @@ def _consultar_entorno():
         # pedir hormiga para los datos recibidos
         respuesta_pedir_hormiga = _llamar_api_pedir_hormiga()
 
-        # si recibimos hormiga, pedir y asignar hormiga a los datos recibidos *guardar en dynamo* *estado: trabajando*
+        # si recibimos hormiga, asignar hormiga a los datos recibidos *guardar en dynamo* *estado: trabajando*
+        # retrieve_data(id)
+        # asignar_hormiga(data, respuesta_pedir_hormiga)
         # guardar_datos(data)
 
         # añadir timer de 1 minuto
@@ -87,6 +91,7 @@ def _consultar_entorno():
         # cuando el timer llegue a 0. llamar a subsistema correspondiente. devolver hormiga. *guardar en dynamo* *estado: terminado*\
 
         enviar_mensaje(data, respuesta_pedir_hormiga)
+        #_llamar_api_devolver_hormiga(respuesta_pedir_hormiga.json().get('id'))
 
     else:
         application.logger.warning(f"No se pudo obtener datos de {ENTORNO_NEXT_ELEMENT_URL}. Estado: {respuesta.status_code}")
