@@ -38,8 +38,6 @@ MOCK_ENTORNO_RESPUESTA_COMIDA = {
     "foodValue": 3
 }
 
-
-
 ### Configuración de Registro (Logging) ###
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
@@ -212,27 +210,6 @@ def manejar_solicitud():
 @application.route('/echo', methods=['GET', 'POST'])
 def echo():
    return jsonify(request.json)
-
-### Swagger Blueprint ###
-# Call factory function to create our blueprint
-swaggerui_blueprint = get_swaggerui_blueprint(
-    SWAGGER_URL,  # Swagger UI static files will be mapped to '{SWAGGER_URL}/dist/'
-    API_URL,
-    config={  # Swagger UI config overrides
-        'app_name': "application"
-    },
-    # oauth_config={  # OAuth config. See https://github.com/swagger-api/swagger-ui#oauth2-configuration .
-    #    'clientId': "your-client-id",
-    #    'clientSecret': "your-client-secret-if-required",
-    #    'realm': "your-realms",
-    #    'appName': "your-app-name",
-    #    'scopeSeparator': " ",
-    #    'additionalQueryStringParams': {'test': "hello"}
-    # }
-)
-
-application.register_blueprint(swaggerui_blueprint)
-
 
 
 ### Ejecución Principal ###
