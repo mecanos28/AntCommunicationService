@@ -5,9 +5,14 @@ import boto3
 import requests
 import uuid
 from datetime import datetime
+from flask_swagger_ui import get_swaggerui_blueprint
+
+## Swagger ##
+SWAGGER_URL = '/api/docs'  # URL for exposing Swagger UI (without trailing '/')
+API_URL = 'static/swagger.json'  # Our API url (can of course be a local resource)
 
 ### Constantes ###
-POLL_TO_ENTORNO_SECONDS = 10  # Actualmente configurado a 10 segundos para pruebas. Debe ser 60 segundos en producción.
+POLL_TO_ENTORNO_SECONDS = 300  # Actualmente configurado a 300 segundos para pruebas. Debe ser 60 segundos en producción.
 ENTORNO_NEXT_ELEMENT_URL = "http://ec2-52-200-81-149.compute-1.amazonaws.com/api/environment/next-task"
 
 # Pendientes de onbordear
@@ -51,7 +56,6 @@ sched.start()
 
 ### Configuración de Flask ###
 application = Flask(__name__)
-
 
 
 ### Configuración de AWS DynamoDB ###
@@ -205,10 +209,30 @@ def manejar_solicitud():
     return {'status': 'mensaje recibido con éxito'}, 200
 
 #Echo para revisar repido si la app responde
-@application.route('/echo')
-def echo(msj):
-    resp  = jsonify(echo=msj)
-    return resp
+@application.route('/echo', methods=['GET', 'POST'])
+def echo():
+   return jsonify(request.json)
+
+### Swagger Blueprint ###
+# Call factory function to create our blueprint
+swaggerui_blueprint = get_swaggerui_blueprint(
+    SWAGGER_URL,  # Swagger UI static files will be mapped to '{SWAGGER_URL}/dist/'
+    API_URL,
+    config={  # Swagger UI config overrides
+        'app_name': "application"
+    },
+    # oauth_config={  # OAuth config. See https://github.com/swagger-api/swagger-ui#oauth2-configuration .
+    #    'clientId': "your-client-id",
+    #    'clientSecret': "your-client-secret-if-required",
+    #    'realm': "your-realms",
+    #    'appName': "your-app-name",
+    #    'scopeSeparator': " ",
+    #    'additionalQueryStringParams': {'test': "hello"}
+    # }
+)
+
+application.register_blueprint(swaggerui_blueprint)
+
 
 
 ### Ejecución Principal ###
