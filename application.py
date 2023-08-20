@@ -67,7 +67,7 @@ table = dynamodb.Table('Mensajes')
 @application.route('/poll-entorno', methods=['GET'])
 def endpoint_poll_entorno():
     """Endpoint para activar manualmente el poll."""
-    #_consultar_entorno()
+    _consultar_entorno()
     return {'status': 'consulta exitosa'}, 200
 
 def _consultar_entorno():
@@ -120,6 +120,7 @@ def _llamar_api_entorno():
     try:
         application.logger.info(f"Consultando {ENTORNO_NEXT_ELEMENT_URL}")
         respuesta = requests.get(ENTORNO_NEXT_ELEMENT_URL)
+        print(jsonify(respuesta))
         if (respuesta.status_code == 200):
             application.logger.info(f"Dato obtenido de {ENTORNO_NEXT_ELEMENT_URL}")
             return respuesta
