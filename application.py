@@ -97,7 +97,7 @@ def _consultar_entorno():
     """Función para obtener datos del servicio externo entorno."""
     respuesta = _llamar_api_entorno()
 
-    if respuesta.status_code == 200:
+    if respuesta and respuesta.status_code == 200:
         data = respuesta.json()
         application.logger.info(f"Dato obtenido de {ENTORNO_NEXT_ELEMENT_URL}: {data}")
 
@@ -120,7 +120,7 @@ def _consultar_entorno():
         #_llamar_api_devolver_hormiga(respuesta_pedir_hormiga.json().get('id'))
 
     else:
-        application.logger.warning(f"No se pudo obtener datos de {ENTORNO_NEXT_ELEMENT_URL}. Estado: {respuesta.status_code}")
+        application.logger.warning(f"No se pudo obtener datos de {ENTORNO_NEXT_ELEMENT_URL}.")
 
 
 def enviar_mensaje(data, respuesta_pedir_hormiga):
@@ -144,7 +144,7 @@ def _llamar_api_entorno():
         application.logger.info(f"Consultando {ENTORNO_NEXT_ELEMENT_URL}")
         respuesta = requests.get(ENTORNO_NEXT_ELEMENT_URL)
         print(jsonify(respuesta))
-        if (respuesta.status_code == 200):
+        if respuesta and respuesta.status_code == 200:
             application.logger.info(f"Dato obtenido de {ENTORNO_NEXT_ELEMENT_URL}")
             return respuesta
     except:
@@ -154,7 +154,7 @@ def _llamar_api_pedir_hormiga():
     try:
         application.logger.info(f"Consultando {HORMIGA_REQUEST_URL}")
         respuesta = requests.get(HORMIGA_REQUEST_URL)
-        if (respuesta.status_code == 200):
+        if respuesta and respuesta.status_code == 200:
             application.logger.info(f"Hormiga obtenida de {HORMIGA_REQUEST_URL}")
             return respuesta
     except:
@@ -164,7 +164,7 @@ def _llamar_api_devolver_hormiga(id_hormiga):
     try:
         application.logger.info(f"Consultando {HORMIGA_RETURN_URL}")
         respuesta = requests.post(HORMIGA_RETURN_URL, json={"hormiga": {"id": id_hormiga}})
-        if (respuesta.status_code == 200):
+        if respuesta and respuesta.status_code == 200:
             application.logger.info(f"Hormiga devuelta a {HORMIGA_RETURN_URL} con éxito id: {id_hormiga}")
             return respuesta
         else:
@@ -177,7 +177,7 @@ def _llamar_api_informar_ataque(data):
     try:
         application.logger.info(f"Consultando {INFORMAR_ATAQUE_URL}")
         respuesta = requests.post(INFORMAR_ATAQUE_URL, data)
-        if (respuesta.status_code == 200):
+        if respuesta and respuesta.status_code == 200:
             application.logger.info(f"Información de ataque enviada a {INFORMAR_ATAQUE_URL} con éxito data: {data}")
             return respuesta
         else:
@@ -190,7 +190,7 @@ def _llamar_api_informar_comida(data):
     try:
         application.logger.info(f"Consultando {INFORMAR_COMIDA_URL}")
         respuesta = requests.post(INFORMAR_COMIDA_URL, data)
-        if (respuesta.status_code == 200):
+        if respuesta and respuesta.status_code == 200:
             application.logger.info(f"Información de comida enviada a {INFORMAR_COMIDA_URL} con éxito data: {data}")
             return respuesta
         else:
