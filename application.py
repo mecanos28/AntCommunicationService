@@ -7,7 +7,7 @@ from os import getenv
 from datetime import datetime
 from flask import Flask, request, jsonify
 from flask_swagger_ui import get_swaggerui_blueprint
-from apscheduler.schedulers.background import BackgroundScheduler
+#from apscheduler.schedulers.background import BackgroundScheduler
 
 ## Swagger ##
 SWAGGER_URL = '/api/docs'  # URL for exposing Swagger UI (without trailing '/')
@@ -45,14 +45,14 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 
 ### Configuración del Programador (Scheduler) ###
-def tarea_programada():
-    """Función para acceder al endpoint poll_entorno periódicamente."""
-    respuesta = requests.get('http://127.0.0.1:5000/poll-entorno')  # Asumiendo que Flask corre en el puerto 5000 por defecto
-    print(f"Respuesta de la tarea programada: {respuesta.status_code}")
+# def tarea_programada():
+#     """Función para acceder al endpoint poll_entorno periódicamente."""
+#     respuesta = requests.get('http://127.0.0.1:5000/poll-entorno')  # Asumiendo que Flask corre en el puerto 5000 por defecto
+#     print(f"Respuesta de la tarea programada: {respuesta.status_code}")
 
-sched = BackgroundScheduler(daemon=True)
-sched.add_job(tarea_programada, 'interval', seconds=POLL_TO_ENTORNO_SECONDS)
-sched.start()
+# sched = BackgroundScheduler(daemon=True)
+# sched.add_job(tarea_programada, 'interval', seconds=POLL_TO_ENTORNO_SECONDS)
+# sched.start()
 
 ### Configuración de Flask ###
 application = Flask(__name__)
