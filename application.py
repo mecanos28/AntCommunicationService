@@ -6,8 +6,7 @@ import uuid
 from os import getenv
 from datetime import datetime
 from flask import Flask, request, jsonify
-from flask_swagger_ui import get_swaggerui_blueprint
-#from apscheduler.schedulers.background import BackgroundScheduler
+from flask_restx import Api, Resource, fields
 
 ## Swagger ##
 SWAGGER_URL = '/api/docs'  # URL for exposing Swagger UI (without trailing '/')
@@ -56,6 +55,19 @@ logger = logging.getLogger()
 
 ### Configuración de Flask ###
 application = Flask(__name__)
+api = Api(application)
+
+ns = api.namespace('Mensajes', description='Operaciones con Mensajes')
+
+dynamodb_record_model = api.model('Mensaje', {
+    'Id':fields.String(readonly=True, description='DynamoDB record Id'),
+    'Estado':fields.String(required=True, description='Estado del mensaje'),
+    'Data':fields.String(required=True, description='El mensaje')
+})
+
+message_input_model = api.model('Data',{
+    'Data': fields.String(required=True, description='El objeto mensaje convertido en string')
+})
 
 
 ### Configuración de AWS DynamoDB ###
@@ -186,8 +198,9 @@ def _llamar_api_informar_comida(data):
 def guardar_datos(data):
     """Función para procesar los datos recibidos y guardar en DynamoDB."""
     tiempo_actual = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    item = {
-        'id': str(uuid.uuid4()),
+    id = str(uuid.uuid4())
+    data = {
+        'id': id,
         'externalId': data.get('_id'),
         'type': data.get('type'),
         'name': data.get('name'),
@@ -196,14 +209,33 @@ def guardar_datos(data):
         'foodValue': data.get('foodValue', None),
         'datetime': tiempo_actual
     }
-    respuesta = table.put_item(Item=item)
-    application.logger.info(f"Dato guardado en DynamoDB: {item}")
+    record = {
+        'Id':id,
+        'Estado': 'Recibido',
+        'Data': data
+    }
+    respuesta = table.put_item(Item=record)
+    application.logger.info(f"Dato guardado en DynamoDB: {record}")
+    return respuesta
 
 def obtener_datos(id):
     """Función para obtener los datos de DynamoDB."""
-    respuesta = table.get_item(Key={'id': id})
+    respuesta = table.get_item(Key={'Id': id})
     return respuesta.get('Item', None)
 
+## Acualiza el estado de un mensaje en Dynamo DB por Id.
+def actualizar_estado(id, estado:str):
+    response = table.update_item(
+        Key = { 'Id': id },
+        AttributeUpdates={
+            'Estado': {
+                'Value': estado,
+                'Action': 'PUT'
+            }
+        },
+        ReturnValues = "UPDATED_NEW" # retorna los valores actualizados
+    )
+    return response
 
 # No se usa, pero se deja como ejemplo de cómo recibir mensajes entrantes.
 @application.route('/recibir-mensaje', methods=['POST'])
@@ -214,10 +246,33 @@ def manejar_solicitud():
     guardar_datos(data)
     return {'status': 'mensaje recibido con éxito'}, 200
 
-#Echo para revisar repido si la app responde
-@application.route('/echo', methods=['GET', 'POST'])
-def echo():
-   return jsonify(request.json)
+################  Este es el API usando flask-restx ###############
+@api.route('/hello')
+class HelloWorld(Resource):
+    def get(self):
+        actualizar_estado('6ada5cbd-81a0-48af-9659-1b93b90f6a75', 'Procesado')
+        return {'hello': 'world'}
+
+@ns.route('/<string:id>')
+class MensajeAPI(Resource):
+    '''Muestra mensajes'''
+    @ns.doc('Buscar Mensajes')
+    @ns.marshal_list_with(dynamodb_record_model)
+    def get(self, id):
+        '''Obtener Mensaje por Id'''
+        msj = obtener_datos(id)
+        return msj
+    
+@ns.route('/')
+class MensajeCrear(Resource):
+    @ns.expect(message_input_model)
+    def post(self):
+        '''Crear un Registro nuevo'''
+        data = request.json
+        res = guardar_datos(data)
+        return res
+
+
 
 
 ### Ejecución Principal ###
