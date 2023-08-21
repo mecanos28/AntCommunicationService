@@ -3,6 +3,7 @@ import boto3
 import requests
 import uuid
 
+from os import getenv
 from datetime import datetime
 from flask import Flask, request, jsonify
 from flask_swagger_ui import get_swaggerui_blueprint
@@ -58,7 +59,12 @@ application = Flask(__name__)
 
 
 ### Configuración de AWS DynamoDB ###
-dynamodb = boto3.resource('dynamodb')
+dynamodb = boto3.resource('dynamodb', 
+    region_name = getenv("REGION_NAME"), 
+    aws_access_key_id = getenv('AWS_ACCESS_KEY_ID'), 
+    aws_secret_access_key = getenv('AWS_SECRET_ACCESS_KEY')
+    )
+
 table = dynamodb.Table('Mensajes')
 
 ### Endpoints de API ###
