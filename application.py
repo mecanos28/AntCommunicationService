@@ -1,4 +1,6 @@
 import logging
+from random import random
+
 import boto3
 import requests
 import uuid
@@ -11,36 +13,30 @@ from flask import Flask, request, jsonify
 from flask_restx import Api, Resource, fields
 
 ## Swagger ##
+from mocking import _mocked_response, \
+    MOCK_HORMIGA_RESPONSE, _get_random_mock_entorno
+
 SWAGGER_URL = '/api/docs'  # URL for exposing Swagger UI (without trailing '/')
 API_URL = 'static/swagger.json'  # Our API url (can of course be a local resource)
 
 ### Constantes ###
 POLL_TO_ENTORNO_SECONDS = 10  # Actualmente configurado a 10 segundos para pruebas. Debe ser 60 segundos en producción.
 ENTORNO_NEXT_ELEMENT_URL = "http://ec2-52-200-81-149.compute-1.amazonaws.com/api/environment/next-task"
-ENTORNO_POLLING_ACTIVE = False
+ENTORNO_POLLING_ACTIVE = True
+
+IS_MOCKING_ALL_APIS = True
+IS_MOCKING_ENTORNO = True
+IS_MOCKING_HORMIGA_REQUEST = True
+IS_MOCKING_HORMIGA_RETURN = True
+IS_MOCKING_INFORMAR_ATAQUE = True
+IS_MOCKING_INFORMAR_COMIDA = True
 
 # Pendientes de onbordear
 HORMIGA_REQUEST_URL = "http://ec2-3-19-106-46.us-east-2.compute.amazonaws.com:38000/getHormiga" # Cambiar a la URL correcta cuando sepamos
 HORMIGA_RETURN_URL = "http://ec2-3-19-106-46.us-east-2.compute.amazonaws.com:38000/returnHormiga" # Cambiar a la URL correcta cuando sepamos
-INFORMAR_ATAQUE_URL = "http://colony-defense-service-env.eba-pmxaehhm.us-east-1.elasticbeanstalk.com:8080/swagger-ui/index.html" # Cambiar a la URL correcta cuando sepamos
+INFORMAR_ATAQUE_URL = "http://colony-defense-service-env.eba-pmxaehhm.us-east-1.elasticbeanstalk.com:8080/api/attack-handler/create" # Cambiar a la URL correcta cuando sepamos
 INFORMAR_COMIDA_URL = "http://colony-food-service-env.eba-2q2j2x2m.us-east-1.elasticbeanstalk.com:8080/swagger-ui/index.html" # Cambiar a la URL correcta cuando sepamos
 
-MOCK_ENTORNO_RESPUESTA_ENEMIGO = {
-    "_id": "64dd6b46695b541fdf8bbbfb",
-    "type": "enemy",
-    "name": "Mariposa Monarca",
-    "antsRequired": 7,
-    "timeRequired": 14330
-}
-
-MOCK_ENTORNO_RESPUESTA_COMIDA = {
-    "_id": "64dd6b46695b541fdf8bbbf0",
-    "type": "food",
-    "name": "Caramelo Duro",
-    "antsRequired": 6,
-    "timeRequired": 18173,
-    "foodValue": 3
-}
 
 ### Configuración de Registro (Logging) ###
 logging.basicConfig(level=logging.INFO)
@@ -102,10 +98,12 @@ def _consultar_entorno():
         application.logger.info(f"Dato obtenido de {ENTORNO_NEXT_ELEMENT_URL}: {data}")
 
         # *guardar en dynamo* *estado: pendiente*
-        # guardar_datos(data)
+        dato_guardado = guardar_datos(data, "Recibido")
+        application.logger.info(f"Dato guardado en DynamoDB: {dato_guardado}")
 
         # pedir hormiga para los datos recibidos
         respuesta_pedir_hormiga = _llamar_api_pedir_hormiga()
+        application.logger.info(f"Respuesta de pedir hormiga: {respuesta_pedir_hormiga}")
 
         # si recibimos hormiga, asignar hormiga a los datos recibidos *guardar en dynamo* *estado: trabajando*
         # retrieve_data(id)
@@ -116,41 +114,43 @@ def _consultar_entorno():
 
         # cuando el timer llegue a 0. llamar a subsistema correspondiente. devolver hormiga. *guardar en dynamo* *estado: terminado*\
 
-        enviar_mensaje(data, respuesta_pedir_hormiga)
+        enviar_mensaje(data)
         #_llamar_api_devolver_hormiga(respuesta_pedir_hormiga.json().get('id'))
 
     else:
         application.logger.warning(f"No se pudo obtener datos de {ENTORNO_NEXT_ELEMENT_URL}.")
 
 
-def enviar_mensaje(data, respuesta_pedir_hormiga):
-    data_a_enviar = {
-        'id': data.get('_id'),
-        'type': data.get('type'),
-        'name': data.get('name'),
-        'antsRequired': data.get('antsRequired'),
-        'timeRequired': data.get('timeRequired'),
-        'foodValue': data.get('foodValue'),
-        'id_hormiga': respuesta_pedir_hormiga.json().get('id')
-    }
+def enviar_mensaje(data):
     if (data.get('type') == 'enemy'):
         _llamar_api_informar_ataque(data)
+        application.logger.info(f"Enviando mensaje de ataque a {INFORMAR_ATAQUE_URL}" + str(data))
     else:
         _llamar_api_informar_comida(data)
+        application.logger.info(f"Enviando mensaje de comida a {INFORMAR_COMIDA_URL}" + str(data))
+
+
 
 
 def _llamar_api_entorno():
+    if (IS_MOCKING_ALL_APIS or IS_MOCKING_ENTORNO):
+        return _get_random_mock_entorno()
+
     try:
         application.logger.info(f"Consultando {ENTORNO_NEXT_ELEMENT_URL}")
         respuesta = requests.get(ENTORNO_NEXT_ELEMENT_URL)
-        print(jsonify(respuesta))
-        if respuesta and respuesta.status_code == 200:
+        application.logger.info(respuesta)
+        application.logger.info(jsonify(respuesta))
+        if respuesta.status_code == 200:
             application.logger.info(f"Dato obtenido de {ENTORNO_NEXT_ELEMENT_URL}")
             return respuesta
     except:
         application.logger.warning(f"No se pudo obtener datos de {ENTORNO_NEXT_ELEMENT_URL}. Estado: {respuesta.status_code}")
 
 def _llamar_api_pedir_hormiga():
+    if IS_MOCKING_ALL_APIS or IS_MOCKING_HORMIGA_REQUEST:
+        return _mocked_response(MOCK_HORMIGA_RESPONSE)
+
     try:
         application.logger.info(f"Consultando {HORMIGA_REQUEST_URL}")
         respuesta = requests.get(HORMIGA_REQUEST_URL)
@@ -161,6 +161,9 @@ def _llamar_api_pedir_hormiga():
         application.logger.warning(f"No se pudo obtener datos de {HORMIGA_REQUEST_URL}. Estado: {respuesta.status_code}")
 
 def _llamar_api_devolver_hormiga(id_hormiga):
+    if IS_MOCKING_ALL_APIS or IS_MOCKING_HORMIGA_REQUEST:
+        return _mocked_response(MOCK_HORMIGA_RESPONSE)
+
     try:
         application.logger.info(f"Consultando {HORMIGA_RETURN_URL}")
         respuesta = requests.post(HORMIGA_RETURN_URL, json={"hormiga": {"id": id_hormiga}})
@@ -174,6 +177,9 @@ def _llamar_api_devolver_hormiga(id_hormiga):
         application.logger.warning(f"No se pudo obtener datos de {HORMIGA_RETURN_URL}. Estado: {respuesta.status_code}")
 
 def _llamar_api_informar_ataque(data):
+    if IS_MOCKING_ALL_APIS or IS_MOCKING_INFORMAR_ATAQUE:
+        return _mocked_response({})
+
     try:
         application.logger.info(f"Consultando {INFORMAR_ATAQUE_URL}")
         respuesta = requests.post(INFORMAR_ATAQUE_URL, data)
@@ -187,6 +193,9 @@ def _llamar_api_informar_ataque(data):
         application.logger.warning(f"No se pudo obtener datos de {INFORMAR_ATAQUE_URL}. Estado: {respuesta.status_code}")
 
 def _llamar_api_informar_comida(data):
+    if IS_MOCKING_ALL_APIS or IS_MOCKING_INFORMAR_COMIDA:
+        return _mocked_response({})
+
     try:
         application.logger.info(f"Consultando {INFORMAR_COMIDA_URL}")
         respuesta = requests.post(INFORMAR_COMIDA_URL, data)
@@ -200,7 +209,7 @@ def _llamar_api_informar_comida(data):
         application.logger.warning(f"No se pudo obtener datos de {INFORMAR_COMIDA_URL}. Estado: {respuesta.status_code}")
 
 
-def guardar_datos(data):
+def guardar_datos(data, estado):
     """Función para procesar los datos recibidos y guardar en DynamoDB."""
     tiempo_actual = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     id = str(uuid.uuid4())
@@ -216,7 +225,7 @@ def guardar_datos(data):
     }
     record = {
         'Id':id,
-        'Estado': 'Recibido',
+        'Estado': estado,
         'Data': data
     }
     respuesta = table.put_item(Item=record)
