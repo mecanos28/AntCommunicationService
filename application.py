@@ -63,10 +63,12 @@ ns = api.namespace('Mensajes', description='Operaciones con Mensajes')
 dynamodb_record_model = api.model('Mensaje', {
     'Id':fields.String(readonly=True, description='DynamoDB record Id'),
     'Estado':fields.String(required=True, description='Estado del mensaje'),
-    'Data':fields.String(required=True, description='El mensaje')
+    'Data':fields.String(required=True, description='El mensaje'),
+    'Hormiga':fields.String(required=False, description='Id de la hormiga asignada')
 })
 
 message_input_model = api.model('Data',{
+    'Estado':fields.String(required=True, description='Estado del mensaje'),
     'Data': fields.String(required=True, description='El objeto mensaje convertido en string')
 })
 
@@ -225,7 +227,8 @@ def guardar_datos(data, estado):
     record = {
         'Id':id,
         'Estado': estado,
-        'Data': data
+        'Data': data,
+        'Hormiga': ''
     }
     respuesta = table.put_item(Item=record)
     application.logger.info(f"Dato guardado en DynamoDB: {record}")
@@ -250,6 +253,20 @@ def actualizar_estado(id, estado:str):
     )
     return response
 
+## Acualiza la Hormiga de un mensaje en Dynamo DB por Id.
+def actualizar_hormiga(id, hormiga:str):
+    response = table.update_item(
+        Key = { 'Id': id },
+        AttributeUpdates={
+            'Hormiga': {
+                'Value': hormiga,
+                'Action': 'PUT'
+            }
+        },
+        ReturnValues = "UPDATED_NEW" # retorna los valores actualizados
+    )
+    return response
+
 # No se usa, pero se deja como ejemplo de cómo recibir mensajes entrantes.
 @application.route('/recibir-mensaje', methods=['POST'])
 def manejar_solicitud():
@@ -263,7 +280,6 @@ def manejar_solicitud():
 @api.route('/hello')
 class HelloWorld(Resource):
     def get(self):
-        actualizar_estado('6ada5cbd-81a0-48af-9659-1b93b90f6a75', 'Procesado')
         return {'hello': 'world'}
 
 @ns.route('/<string:id>')
