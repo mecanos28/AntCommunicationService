@@ -1,3 +1,4 @@
+import uuid
 from random import random
 
 MOCK_ENTORNO = [
@@ -116,13 +117,16 @@ MOCK_ENTORNO = [
     }
 ]
 
-
 MOCK_HORMIGA_RESPONSE = {
     "id": 0,
     "type": "worker",
     "name": "Hormiga Obrera",
     "birthday": "2021-06-01T00:00:00.000Z"
 }
+
+
+def get_hormiga_response_with_generated_id():
+    return {**MOCK_HORMIGA_RESPONSE, "id": str(uuid.uuid4())}
 
 
 def _mocked_response(response_data):
@@ -135,6 +139,7 @@ def _mocked_response(response_data):
             return self.data
 
     return MockResponse(response_data)
+
 
 ## get random MOCK_ENTORNO array element
 def _get_random_mock_entorno():

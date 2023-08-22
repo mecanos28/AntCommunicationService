@@ -14,7 +14,7 @@ from flask_restx import Api, Resource, fields
 
 ## Swagger ##
 from mocking import _mocked_response, \
-    MOCK_HORMIGA_RESPONSE, _get_random_mock_entorno
+    MOCK_HORMIGA_RESPONSE, _get_random_mock_entorno, get_hormiga_response_with_generated_id
 
 SWAGGER_URL = '/api/docs'  # URL for exposing Swagger UI (without trailing '/')
 API_URL = 'static/swagger.json'  # Our API url (can of course be a local resource)
@@ -99,11 +99,10 @@ def _consultar_entorno():
 
         # *guardar en dynamo* *estado: pendiente*
         dato_guardado = guardar_datos(data, "Recibido")
-        application.logger.info(f"Dato guardado en DynamoDB: {dato_guardado}")
-
+        application.logger.info(f"Dato guardado en DynamoDB: {str(dato_guardado)}")
         # pedir hormiga para los datos recibidos
         respuesta_pedir_hormiga = _llamar_api_pedir_hormiga()
-        application.logger.info(f"Respuesta de pedir hormiga: {respuesta_pedir_hormiga}")
+        application.logger.info(f"Respuesta de pedir hormiga: {str(respuesta_pedir_hormiga)}")
 
         # si recibimos hormiga, asignar hormiga a los datos recibidos *guardar en dynamo* *estado: trabajando*
         # retrieve_data(id)
@@ -149,7 +148,7 @@ def _llamar_api_entorno():
 
 def _llamar_api_pedir_hormiga():
     if IS_MOCKING_ALL_APIS or IS_MOCKING_HORMIGA_REQUEST:
-        return _mocked_response(MOCK_HORMIGA_RESPONSE)
+        return _mocked_response(get_hormiga_response_with_generated_id()).data
 
     try:
         application.logger.info(f"Consultando {HORMIGA_REQUEST_URL}")
@@ -162,7 +161,7 @@ def _llamar_api_pedir_hormiga():
 
 def _llamar_api_devolver_hormiga(id_hormiga):
     if IS_MOCKING_ALL_APIS or IS_MOCKING_HORMIGA_REQUEST:
-        return _mocked_response(MOCK_HORMIGA_RESPONSE)
+        return _mocked_response({}).data
 
     try:
         application.logger.info(f"Consultando {HORMIGA_RETURN_URL}")
@@ -178,7 +177,7 @@ def _llamar_api_devolver_hormiga(id_hormiga):
 
 def _llamar_api_informar_ataque(data):
     if IS_MOCKING_ALL_APIS or IS_MOCKING_INFORMAR_ATAQUE:
-        return _mocked_response({})
+        return _mocked_response({}).data
 
     try:
         application.logger.info(f"Consultando {INFORMAR_ATAQUE_URL}")
@@ -194,7 +193,7 @@ def _llamar_api_informar_ataque(data):
 
 def _llamar_api_informar_comida(data):
     if IS_MOCKING_ALL_APIS or IS_MOCKING_INFORMAR_COMIDA:
-        return _mocked_response({})
+        return _mocked_response({}).data
 
     try:
         application.logger.info(f"Consultando {INFORMAR_COMIDA_URL}")
