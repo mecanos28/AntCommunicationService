@@ -21,10 +21,11 @@ SWAGGER_URL = '/api/docs'  # URL for exposing Swagger UI (without trailing '/')
 API_URL = 'static/swagger.json'  # Our API url (can of course be a local resource)
 
 ### Constantes ###
-POLL_TO_ENTORNO_SECONDS = 10  # Actualmente configurado a 10 segundos para pruebas. Debe ser 60 segundos en producción.
+POLL_TO_ENTORNO_SECONDS = 5  # Actualmente configurado a 10 segundos para pruebas. Debe ser 60 segundos en producción.
+POLL_TO_RETURN= 60 #Configurado en 10 segundos para pruebas 
 ENTORNO_NEXT_ELEMENT_URL = "http://ec2-52-200-81-149.compute-1.amazonaws.com/api/environment/next-task"
 ENTORNO_POLLING_ACTIVE = True
-ENTORNO_TIMER_RETURN = True
+#ENTORNO_TIMER_RETURN = True
 
 IS_MOCKING_ALL_APIS = True
 IS_MOCKING_ENTORNO = True
@@ -48,11 +49,6 @@ logger = logging.getLogger()
 def tarea_programada():
     """Función para acceder al endpoint poll_entorno periódicamente."""
     respuesta = requests.get('http://127.0.0.1:5000/poll-entorno')  # Asumiendo que Flask corre en el puerto 5000 por defecto
-    print(f"Respuesta de la tarea programada: {respuesta.status_code}")
-
-def reenviar_hormigas():
-    """Función que funciona como timer para enviar los datos periodicamente"""
-    respuesta = requests.post('http://127.0.0.1:5000/')  # Asumiendo que Flask corre en el puerto 5000 por defecto
     print(f"Respuesta de la tarea programada: {respuesta.status_code}")
 
 if ENTORNO_POLLING_ACTIVE:
@@ -112,28 +108,40 @@ def _consultar_entorno():
         application.logger.info(f"Dato obtenido de {ENTORNO_NEXT_ELEMENT_URL}: {data}")
 
         # *guardar en dynamo* *estado: pendiente*
-        dato_guardado = guardar_datos(data, "Recibido")
-        application.logger.info(f"Dato guardado en DynamoDB: {str(dato_guardado)}")
+        id_mensaje_recibido = guardar_datos(data, "Recibido")
+        #application.logger.info(f"Dato guardado en DynamoDB: {str(dato_guardado)}")
         # pedir hormiga para los datos recibidos
         respuesta_pedir_hormiga = _llamar_api_pedir_hormiga()
         application.logger.info(f"Respuesta de pedir hormiga: {str(respuesta_pedir_hormiga)}")
 
         # si recibimos hormiga, asignar hormiga a los datos recibidos *guardar en dynamo* *estado: trabajando*
-        # retrieve_data(id)
+        #id_mensaje_recibido = dato_guardado.id
+        id_hormiga= respuesta_pedir_hormiga.id
+        
+        if id_hormiga is None:
+            respuesta_pedir_hormiga = _llamar_api_pedir_hormiga()
+            application.logger.info(f"Respuesta de pedir hormiga: {str(respuesta_pedir_hormiga)}")
+            id_hormiga=respuesta_pedir_hormiga.id 
+
+        actualizar_mensaje(id_mensaje_recibido, "Procesando", id_hormiga)
+
         # asignar_hormiga(data, respuesta_pedir_hormiga)
         # guardar_datos(data)
 
         # añadir timer de 1 minuto, se pasa como parametro en segundos
-        if ENTORNO_TIMER_RETURN:
-                print("Iniciando scheduler... para timer de hormiga")
-                sched = BackgroundScheduler(daemon=True)
-                sched.add_job(enviar_mensaje(dato_guardado), 'interval', seconds=POLL_TO_RETURN)
-                sched.start()
+        #if ENTORNO_TIMER_RETURN:
+                #print("Iniciando scheduler... para timer de hormiga")
+                #scheduler = BackgroundScheduler(daemon=True)
+                #scheduler.add_job(enviar_mensaje(dato_guardado), 'interval', seconds=POLL_TO_RETURN)
+                #scheduler.start()
         # cuando el timer llegue a 0. llamar a subsistema correspondiente. devolver hormiga. *guardar en dynamo* *estado: terminado*\
+
+        enviar_mensaje(data)
+        actualizar_estado(id_mensaje_recibido, "Procesado")
 
         application.logger.info("Se envia mensaje con datos")
         
-        #_llamar_api_devolver_hormiga(respuesta_pedir_hormiga.json().get('id'))
+        _llamar_api_devolver_hormiga(id_hormiga)
 
     else:
         application.logger.warning(f"No se pudo obtener datos de {ENTORNO_NEXT_ELEMENT_URL}.")
@@ -248,9 +256,9 @@ def guardar_datos(data, estado):
         'Data': data,
         'Hormiga': ''
     }
-    respuesta = table.put_item(Item=record)
+    respuesta = table.put_item(Item=record, ReturnValues='ALL_OLD')
     application.logger.info(f"Dato guardado en DynamoDB: {record}")
-    return respuesta
+    return id
 
 def obtener_datos(id):
     """Función para obtener los datos de DynamoDB."""
