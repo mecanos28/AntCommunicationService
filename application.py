@@ -4,6 +4,8 @@ from random import random
 import boto3
 import requests
 import uuid
+import time
+import asyncio
 
 from os import getenv
 from datetime import datetime
@@ -21,8 +23,10 @@ API_URL = 'static/swagger.json'  # Our API url (can of course be a local resourc
 
 ### Constantes ###
 POLL_TO_ENTORNO_SECONDS = 10  # Actualmente configurado a 10 segundos para pruebas. Debe ser 60 segundos en producción.
+POLL_TO_RETURN= 10 #Configurado en 10 segundos para pruebas 
 ENTORNO_NEXT_ELEMENT_URL = "http://ec2-52-200-81-149.compute-1.amazonaws.com/api/environment/next-task"
 ENTORNO_POLLING_ACTIVE = True
+ENTORNO_TIMER_RETURN = True
 
 IS_MOCKING_ALL_APIS = True
 IS_MOCKING_ENTORNO = True
@@ -32,7 +36,7 @@ IS_MOCKING_INFORMAR_ATAQUE = True
 IS_MOCKING_INFORMAR_COMIDA = True
 
 # Pendientes de onbordear
-HORMIGA_REQUEST_URL = "http://ec2-3-19-106-46.us-east-2.compute.amazonaws.com:38000/getHormiga" # Cambiar a la URL correcta cuando sepamos
+HORMIGA_REQUEST_URL = "http://ec2-3-132-148-116.us-east-2.compute.amazonaws.com:38000/v1/getHormiga" # Cambiar a la URL correcta cuando sepamos
 HORMIGA_RETURN_URL = "http://ec2-3-19-106-46.us-east-2.compute.amazonaws.com:38000/returnHormiga" # Cambiar a la URL correcta cuando sepamos
 INFORMAR_ATAQUE_URL = "http://colony-defense-service-env.eba-pmxaehhm.us-east-1.elasticbeanstalk.com:8080/api/attack-handler/create" # Cambiar a la URL correcta cuando sepamos
 INFORMAR_COMIDA_URL = "http://colony-food-service-env.eba-2q2j2x2m.us-east-1.elasticbeanstalk.com:8080/swagger-ui/index.html" # Cambiar a la URL correcta cuando sepamos
@@ -46,6 +50,11 @@ logger = logging.getLogger()
 def tarea_programada():
     """Función para acceder al endpoint poll_entorno periódicamente."""
     respuesta = requests.get('http://127.0.0.1:5000/poll-entorno')  # Asumiendo que Flask corre en el puerto 5000 por defecto
+    print(f"Respuesta de la tarea programada: {respuesta.status_code}")
+
+def reenviar_hormigas():
+    """Función que funciona como timer para enviar los datos periodicamente"""
+    respuesta = requests.post('http://127.0.0.1:5000/')  # Asumiendo que Flask corre en el puerto 5000 por defecto
     print(f"Respuesta de la tarea programada: {respuesta.status_code}")
 
 if ENTORNO_POLLING_ACTIVE:
@@ -109,11 +118,16 @@ def _consultar_entorno():
         # asignar_hormiga(data, respuesta_pedir_hormiga)
         # guardar_datos(data)
 
-        # añadir timer de 1 minuto
-
+        # añadir timer de 1 minuto, se pasa como parametro en segundos
+        if ENTORNO_TIMER_RETURN:
+                print("Iniciando scheduler... para timer de hormiga")
+                sched = BackgroundScheduler(daemon=True)
+                sched.add_job(enviar_mensaje(dato_guardado), 'interval', seconds=POLL_TO_RETURN)
+                sched.start()
         # cuando el timer llegue a 0. llamar a subsistema correspondiente. devolver hormiga. *guardar en dynamo* *estado: terminado*\
 
-        enviar_mensaje(data)
+        application.logger.info("Se envia mensaje con datos")
+        
         #_llamar_api_devolver_hormiga(respuesta_pedir_hormiga.json().get('id'))
 
     else:
@@ -121,6 +135,7 @@ def _consultar_entorno():
 
 
 def enviar_mensaje(data):
+    print("Enviando un mensaje")
     if (data.get('type') == 'enemy'):
         _llamar_api_informar_ataque(data)
         application.logger.info(f"Enviando mensaje de ataque a {INFORMAR_ATAQUE_URL}" + str(data))
