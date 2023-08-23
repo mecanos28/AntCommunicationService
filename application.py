@@ -11,6 +11,7 @@ from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Flask, request, jsonify
 from flask_restx import Api, Resource, fields
+from botocore.exceptions import ClientError
 
 ## Swagger ##
 from mocking import _mocked_response, \
@@ -21,7 +22,6 @@ API_URL = 'static/swagger.json'  # Our API url (can of course be a local resourc
 
 ### Constantes ###
 POLL_TO_ENTORNO_SECONDS = 10  # Actualmente configurado a 10 segundos para pruebas. Debe ser 60 segundos en producción.
-POLL_TO_RETURN= 10 #Configurado en 10 segundos para pruebas 
 ENTORNO_NEXT_ELEMENT_URL = "http://ec2-52-200-81-149.compute-1.amazonaws.com/api/environment/next-task"
 ENTORNO_POLLING_ACTIVE = True
 ENTORNO_TIMER_RETURN = True
@@ -77,6 +77,11 @@ dynamodb_record_model = api.model('Mensaje', {
 message_input_model = api.model('Data',{
     'Estado':fields.String(required=True, description='Estado del mensaje'),
     'Data': fields.String(required=True, description='El objeto mensaje convertido en string')
+})
+
+message_update_input_model = api.model('Data',{
+    'Estado':fields.String(required=True, description='Estado del mensaje'),
+    'Hormiga': fields.String(required=True, description='El id de la hormiga string')
 })
 
 
@@ -250,7 +255,14 @@ def guardar_datos(data, estado):
 def obtener_datos(id):
     """Función para obtener los datos de DynamoDB."""
     respuesta = table.get_item(Key={'Id': id})
-    return respuesta.get('Item', None)
+    item = respuesta.get('Item', None)
+    if item is None:
+        api.abort(404, "Todo {} doesn't exist".format(id))
+        return None
+    else:        
+        return item
+
+    
 
 ## Acualiza el estado de un mensaje en Dynamo DB por Id.
 def actualizar_estado(id, estado:str):
@@ -280,6 +292,24 @@ def actualizar_hormiga(id, hormiga:str):
     )
     return response
 
+### Actualiza tanto el estado como la hormiga de un mensaje ###
+def actualizar_mensaje(id, estado, hormiga):
+    try:        
+        response = table.update_item(
+            Key = { 'Id':id },
+            UpdateExpression='SET Estado = :estado_new, Hormiga = :hormiga_new',
+            ExpressionAttributeValues={
+                ':estado_new': estado,
+                ':hormiga_new': hormiga
+            },
+            ReturnValues = "UPDATED_NEW", # retorna los valores actualizados
+            ConditionExpression = 'attribute_exists(PK)',
+        )
+        return response
+    except ClientError as e:
+        api.abort(404, "Todo {} doesn't exist".format(id))
+        return None
+
 # No se usa, pero se deja como ejemplo de cómo recibir mensajes entrantes.
 @application.route('/recibir-mensaje', methods=['POST'])
 def manejar_solicitud():
@@ -296,6 +326,7 @@ class HelloWorld(Resource):
         return {'hello': 'world'}
 
 @ns.route('/<string:id>')
+@ns.response(404, 'Todo not found')
 class MensajeAPI(Resource):
     '''Muestra mensajes'''
     @ns.doc('Buscar Mensajes')
@@ -305,6 +336,13 @@ class MensajeAPI(Resource):
         msj = obtener_datos(id)
         return msj
     
+    @ns.expect(message_update_input_model)
+    @ns.marshal_with(dynamodb_record_model)
+    def put(self, id):
+        '''Actualiza Estado & Hormiga del mensaje'''
+        estado, hormiga = api.payload.values()
+        return actualizar_mensaje(id, estado, hormiga)
+    
 @ns.route('/')
 class MensajeCrear(Resource):
     @ns.expect(message_input_model)
@@ -313,7 +351,6 @@ class MensajeCrear(Resource):
         data = request.json
         res = guardar_datos(data)
         return res
-
 
 
 
