@@ -116,7 +116,7 @@ def _consultar_entorno():
 
         # si recibimos hormiga, asignar hormiga a los datos recibidos *guardar en dynamo* *estado: trabajando*
         #id_mensaje_recibido = dato_guardado.id
-        id_hormiga= respuesta_pedir_hormiga.id
+        id_hormiga= respuesta_pedir_hormiga["id"]
         
         if id_hormiga is None:
             respuesta_pedir_hormiga = _llamar_api_pedir_hormiga()
@@ -124,9 +124,6 @@ def _consultar_entorno():
             id_hormiga=respuesta_pedir_hormiga.id 
 
         actualizar_mensaje(id_mensaje_recibido, "Procesando", id_hormiga)
-
-        # asignar_hormiga(data, respuesta_pedir_hormiga)
-        # guardar_datos(data)
 
         # añadir timer de 1 minuto, se pasa como parametro en segundos
         #if ENTORNO_TIMER_RETURN:
@@ -167,7 +164,7 @@ def _llamar_api_entorno():
         application.logger.info(f"Consultando {ENTORNO_NEXT_ELEMENT_URL}")
         respuesta = requests.get(ENTORNO_NEXT_ELEMENT_URL)
         application.logger.info(respuesta)
-        application.logger.info(jsonify(respuesta))
+        application.logger.info(respuesta.json())
         if respuesta.status_code == 200:
             application.logger.info(f"Dato obtenido de {ENTORNO_NEXT_ELEMENT_URL}")
             return respuesta
@@ -256,7 +253,7 @@ def guardar_datos(data, estado):
         'Data': data,
         'Hormiga': ''
     }
-    respuesta = table.put_item(Item=record, ReturnValues='ALL_OLD')
+    respuesta = table.put_item(Item=record)
     application.logger.info(f"Dato guardado en DynamoDB: {record}")
     return id
 
@@ -304,14 +301,14 @@ def actualizar_hormiga(id, hormiga:str):
 def actualizar_mensaje(id, estado, hormiga):
     try:        
         response = table.update_item(
-            Key = { 'Id':id },
+            Key = {'Id':id},
             UpdateExpression='SET Estado = :estado_new, Hormiga = :hormiga_new',
             ExpressionAttributeValues={
                 ':estado_new': estado,
                 ':hormiga_new': hormiga
             },
             ReturnValues = "UPDATED_NEW", # retorna los valores actualizados
-            ConditionExpression = 'attribute_exists(PK)',
+            ConditionExpression = 'attribute_exists(Id)',
         )
         return response
     except ClientError as e:
