@@ -4,8 +4,6 @@ from random import random
 import boto3
 import requests
 import uuid
-import time
-import asyncio
 
 from os import getenv
 from datetime import datetime
