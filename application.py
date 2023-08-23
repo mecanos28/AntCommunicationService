@@ -21,10 +21,10 @@ SWAGGER_URL = '/api/docs'  # URL for exposing Swagger UI (without trailing '/')
 API_URL = 'static/swagger.json'  # Our API url (can of course be a local resource)
 
 ### Constantes ###
-POLL_TO_ENTORNO_SECONDS = 5  # Actualmente configurado a 10 segundos para pruebas. Debe ser 60 segundos en producción.
+POLL_TO_ENTORNO_SECONDS = 60  # Actualmente configurado a 10 segundos para pruebas. Debe ser 60 segundos en producción.
 POLL_TO_RETURN= 60 #Configurado en 10 segundos para pruebas 
 ENTORNO_NEXT_ELEMENT_URL = "http://ec2-52-200-81-149.compute-1.amazonaws.com/api/environment/next-task"
-ENTORNO_POLLING_ACTIVE = True
+ENTORNO_POLLING_ACTIVE = False
 #ENTORNO_TIMER_RETURN = True
 
 IS_MOCKING_ALL_APIS = True
@@ -62,6 +62,7 @@ application = Flask(__name__)
 api = Api(application)
 
 ns = api.namespace('Mensajes', description='Operaciones con Mensajes')
+integration_ns = api.namespace('Integracion' , description='Integracion con otros APIs')
 
 dynamodb_record_model = api.model('Mensaje', {
     'Id':fields.String(readonly=True, description='DynamoDB record Id'),
@@ -75,7 +76,7 @@ message_input_model = api.model('Data',{
     'Data': fields.String(required=True, description='El objeto mensaje convertido en string')
 })
 
-message_update_input_model = api.model('Data',{
+message_update_input_model = api.model('Update',{
     'Estado':fields.String(required=True, description='Estado del mensaje'),
     'Hormiga': fields.String(required=True, description='El id de la hormiga string')
 })
@@ -176,6 +177,7 @@ def _llamar_api_pedir_hormiga():
         return _mocked_response(get_hormiga_response_with_generated_id()).data
 
     try:
+        # necesitamos pasar la ?cantidad=x&typo=''
         application.logger.info(f"Consultando {HORMIGA_REQUEST_URL}")
         respuesta = requests.get(HORMIGA_REQUEST_URL)
         if respuesta and respuesta.status_code == 200:
@@ -183,6 +185,7 @@ def _llamar_api_pedir_hormiga():
             return respuesta
     except:
         application.logger.warning(f"No se pudo obtener datos de {HORMIGA_REQUEST_URL}. Estado: {respuesta.status_code}")
+
 
 def _llamar_api_devolver_hormiga(id_hormiga):
     if IS_MOCKING_ALL_APIS or IS_MOCKING_HORMIGA_REQUEST:
@@ -199,6 +202,7 @@ def _llamar_api_devolver_hormiga(id_hormiga):
     except:
         # manage respuesta could be null
         application.logger.warning(f"No se pudo obtener datos de {HORMIGA_RETURN_URL}. Estado: {respuesta.status_code}")
+
 
 def _llamar_api_informar_ataque(data):
     if IS_MOCKING_ALL_APIS or IS_MOCKING_INFORMAR_ATAQUE:
@@ -334,7 +338,7 @@ class HelloWorld(Resource):
 @ns.response(404, 'Todo not found')
 class MensajeAPI(Resource):
     '''Muestra mensajes'''
-    @ns.doc('Buscar Mensajes')
+    @ns.doc('obtener_datos')
     @ns.marshal_list_with(dynamodb_record_model)
     def get(self, id):
         '''Obtener Mensaje por Id'''
@@ -353,11 +357,24 @@ class MensajeCrear(Resource):
     @ns.expect(message_input_model)
     def post(self):
         '''Crear un Registro nuevo'''
-        data = request.json
-        res = guardar_datos(data)
+        data, estado = api.payload.values()
+        res = guardar_datos(data, estado)
         return res
 
+@integration_ns.route('/entorno/next-task')
+class EntornoNextTask(Resource):
+    def get(self):
+        '''Solicitar Tarea a Entorno'''
+        response =  _llamar_api_entorno()
+        data = response.json()
+        return data
 
+@integration_ns.route('/reina/getHormiga')
+class HormigaReina(Resource):
+    def get(self):
+        '''Solicitar Hormiga a Hormiga Reina '''
+        #TODO _llamar_api_pedir_hormiga()
+        return '', 200
 
 ### Ejecución Principal ###
 if __name__ == '__main__':
