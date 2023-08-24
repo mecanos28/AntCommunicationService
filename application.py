@@ -27,15 +27,15 @@ ENTORNO_NEXT_ELEMENT_URL = "http://ec2-52-200-81-149.compute-1.amazonaws.com/api
 ENTORNO_POLLING_ACTIVE = True
 #ENTORNO_TIMER_RETURN = True
 
-IS_MOCKING_ALL_APIS = True
-IS_MOCKING_ENTORNO = True
-IS_MOCKING_HORMIGA_REQUEST = True
-IS_MOCKING_HORMIGA_RETURN = True
-IS_MOCKING_INFORMAR_ATAQUE = True
-IS_MOCKING_INFORMAR_COMIDA = True
+IS_MOCKING_ALL_APIS = False
+IS_MOCKING_ENTORNO = False
+IS_MOCKING_HORMIGA_REQUEST = False
+IS_MOCKING_HORMIGA_RETURN = False
+IS_MOCKING_INFORMAR_ATAQUE = False
+IS_MOCKING_INFORMAR_COMIDA = False
 
 # Pendientes de onbordear
-HORMIGA_REQUEST_URL = "http://ec2-3-132-148-116.us-east-2.compute.amazonaws.com:38000/v1/getHormiga" # Cambiar a la URL correcta cuando sepamos
+HORMIGA_REQUEST_URL = "http://ec2-3-132-148-116.us-east-2.compute.amazonaws.com:38000/v1/getHormiga?cantidad=1&type=comunicacion'" # Cambiar a la URL correcta cuando sepamos
 HORMIGA_RETURN_URL = "http://ec2-3-19-106-46.us-east-2.compute.amazonaws.com:38000/v1/killHormiga" # Cambiar a la URL correcta cuando sepamos
 INFORMAR_ATAQUE_URL = "http://colony-defense-service-env.eba-pmxaehhm.us-east-1.elasticbeanstalk.com:8080/api/attack-handler/create" # Cambiar a la URL correcta cuando sepamos
 INFORMAR_COMIDA_URL = "http://100.26.157.202/swagger/index.html/harvest" # Cambiar a la URL correcta cuando sepamos
@@ -373,8 +373,8 @@ class EntornoNextTask(Resource):
 class HormigaReina(Resource):
     def get(self):
         '''Solicitar Hormiga a Hormiga Reina '''
-        #TODO _llamar_api_pedir_hormiga()
-        return '', 200
+        res = _llamar_api_pedir_hormiga()
+        return res
 
 ### Ejecución Principal ###
 if __name__ == '__main__':
