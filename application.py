@@ -24,7 +24,7 @@ API_URL = 'static/swagger.json'  # Our API url (can of course be a local resourc
 POLL_TO_ENTORNO_SECONDS = 60  # Actualmente configurado a 10 segundos para pruebas. Debe ser 60 segundos en producción.
 POLL_TO_RETURN= 60 #Configurado en 10 segundos para pruebas 
 ENTORNO_NEXT_ELEMENT_URL = "http://ec2-52-200-81-149.compute-1.amazonaws.com/api/environment/next-task"
-ENTORNO_POLLING_ACTIVE = False
+ENTORNO_POLLING_ACTIVE = True
 #ENTORNO_TIMER_RETURN = True
 
 IS_MOCKING_ALL_APIS = True
@@ -36,9 +36,9 @@ IS_MOCKING_INFORMAR_COMIDA = True
 
 # Pendientes de onbordear
 HORMIGA_REQUEST_URL = "http://ec2-3-132-148-116.us-east-2.compute.amazonaws.com:38000/v1/getHormiga" # Cambiar a la URL correcta cuando sepamos
-HORMIGA_RETURN_URL = "http://ec2-3-19-106-46.us-east-2.compute.amazonaws.com:38000/returnHormiga" # Cambiar a la URL correcta cuando sepamos
+HORMIGA_RETURN_URL = "http://ec2-3-19-106-46.us-east-2.compute.amazonaws.com:38000/v1/killHormiga" # Cambiar a la URL correcta cuando sepamos
 INFORMAR_ATAQUE_URL = "http://colony-defense-service-env.eba-pmxaehhm.us-east-1.elasticbeanstalk.com:8080/api/attack-handler/create" # Cambiar a la URL correcta cuando sepamos
-INFORMAR_COMIDA_URL = "http://colony-food-service-env.eba-2q2j2x2m.us-east-1.elasticbeanstalk.com:8080/swagger-ui/index.html" # Cambiar a la URL correcta cuando sepamos
+INFORMAR_COMIDA_URL = "http://100.26.157.202/swagger/index.html/harvest" # Cambiar a la URL correcta cuando sepamos
 
 
 ### Configuración de Registro (Logging) ###
